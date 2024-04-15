@@ -819,17 +819,31 @@ class Store {
     }
 }
 
+const SECOND = 1000;
+const MINUTE = 60 * SECOND;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+function timeStampDiff(st0, st1) {
+    const r = {
+        days: 0,
+        hours: 0,
+        minutes: 0,
+        seconds: 0,
+        isPositive: true
+    };
+    const odiff = st0 - st1;
+    r.isPositive = odiff >= 0;
+    let diff = Math.abs(odiff);
+    r.days = Math.floor(diff / DAY);
+    diff %= DAY;
+    r.hours = Math.floor(diff / HOUR);
+    diff %= HOUR;
+    r.minutes = Math.floor(diff / MINUTE);
+    diff %= MINUTE;
+    r.seconds = Math.floor(diff / SECOND);
+    return r;
+}
 class Data {
-    invalid = -1;
-    checkValid() {
-        this.invalid = -1;
-        for (let i = 1, m = this.records, l = m.length; i < l; i++) {
-            if (m[i].driven < m[i - 1].driven) {
-                this.invalid = i;
-                break;
-            }
-        }
-    }
     records = [];
     store = new Store('电瓶车充电记录');
     async save() {
@@ -865,33 +879,35 @@ var ui;
                 h('th').addText('序号'),
                 h('th').addText('时间'),
                 h('th').addText('总行程(KM)'),
-                h('th').addText('步长(KM)'),
                 h('th').addText('备注'),
                 h('th').addText('操作'),
             ])
         ]).addChildren(data.records.map((rc, i) => h('tr').addChildren([
             h('td').addChildren([
                 (() => {
-                    const flag = data.invalid !== i;
                     return h('div')
-                        .addText(flag ? i + 1 + '' : '无效')
-                        .setStyle({
-                        color: flag ? 'black' : 'red',
-                        border: flag ? '' : '5px solid red'
-                    });
+                        .addText(i + 1 + '');
                 })()
             ]),
             h('td').addChildren([
+                (() => {
+                    const diff = i > 0 ? timeStampDiff(rc.timeStamp, data.records[i - 1].timeStamp) : null;
+                    if (diff) {
+                        const txt = `${diff.isPositive ? '+' : '-'}${diff.days}天${diff.hours}时${diff.minutes}分${diff.seconds}秒`;
+                        return h('div').addChildren([txt]).setStyle({
+                            color: diff.isPositive ? 'blue' : 'red'
+                        });
+                    }
+                    else {
+                        return h('div').addChildren([
+                            '-'
+                        ]);
+                    }
+                })(),
                 h('input').setAttributes({ type: 'datetime-local' }).setProperties({
                     valueAsNumber: rc.timeStamp + $8hours
                 }).on('change', ({ flush, srcTarget }) => {
                     rc.timeStamp = srcTarget.valueAsNumber - $8hours;
-                    flush();
-                })
-            ]),
-            h('td').addChildren([
-                h('input').setValue(rc.driven).setAttributes({ type: 'number' }).on('change', ({ srcTarget, flush }) => {
-                    rc.driven = srcTarget.valueAsNumber;
                     flush();
                 })
             ]),
@@ -906,7 +922,11 @@ var ui;
                     ]).setStyle({
                         color: flag ? 'blue' : 'red'
                     });
-                })()
+                })(),
+                h('input').setValue(rc.driven).setAttributes({ type: 'number' }).on('change', ({ srcTarget, flush }) => {
+                    rc.driven = srcTarget.valueAsNumber;
+                    flush();
+                })
             ]),
             h('td').addChildren([
                 h('input').setValue(rc.comment).on('change', ({ srcTarget, flush }) => {
@@ -965,9 +985,6 @@ var ui;
                     };
                     fr.readAsText(file);
                 }
-            }),
-            h('button').addText('检查有效性').on('click', async ({ model }) => {
-                model.checkValid();
             }),
         ]);
     }
