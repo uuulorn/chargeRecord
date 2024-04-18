@@ -823,6 +823,7 @@ const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
+const PER_PAGE = 20;
 function timeStampDiff(st0, st1) {
     const r = {
         days: 0,
@@ -845,6 +846,19 @@ function timeStampDiff(st0, st1) {
 }
 class Data {
     records = [];
+    _page = this.pageMax();
+    get page() {
+        return this._page;
+    }
+    set page(value) {
+        this._page = Math.max(Math.min(this.pageMax(), value), 0);
+    }
+    pageMax() {
+        if (this.records.length === 0) {
+            return 0;
+        }
+        return Math.floor((this.records.length - 1) / PER_PAGE);
+    }
     store = new Store('电瓶车充电记录');
     async save() {
         const slot = prompt('输入电车名', '我的电车');
@@ -869,7 +883,7 @@ var ui;
     function app(data) {
         return h('div').addChildren([
             content(data),
-            control()
+            control(data)
         ]);
     }
     ui.app = app;
@@ -882,70 +896,92 @@ var ui;
                 h('th').addText('备注'),
                 h('th').addText('操作'),
             ])
-        ]).addChildren(data.records.map((rc, i) => h('tr').addChildren([
-            h('td').addChildren([
-                (() => {
-                    return h('div')
-                        .addText(i + 1 + '');
-                })()
+        ]).addChildren((() => {
+            const r = [];
+            const start = PER_PAGE * data.page;
+            for (let i = start, l = Math.min(start + PER_PAGE, data.records.length); i < l; i++) {
+                const rc = data.records[i];
+                r.push(h('tr').addChildren([
+                    h('td').addChildren([
+                        (() => {
+                            return h('div')
+                                .addText(i + 1 + '');
+                        })()
+                    ]),
+                    h('td').addChildren([
+                        (() => {
+                            const diff = i > 0 ? timeStampDiff(rc.timeStamp, data.records[i - 1].timeStamp) : null;
+                            if (diff) {
+                                const txt = `${diff.isPositive ? '+' : '-'}${diff.days}天${diff.hours}时${diff.minutes}分${diff.seconds}秒`;
+                                return h('div').addChildren([txt]).setStyle({
+                                    color: diff.isPositive ? 'blue' : 'red'
+                                });
+                            }
+                            else {
+                                return h('div').addChildren([
+                                    '-'
+                                ]);
+                            }
+                        })(),
+                        h('input').setAttributes({ type: 'datetime-local' }).setProperties({
+                            valueAsNumber: rc.timeStamp + $8hours
+                        }).on('change', ({ flush, srcTarget }) => {
+                            rc.timeStamp = srcTarget.valueAsNumber - $8hours;
+                            flush();
+                        })
+                    ]),
+                    h('td').addChildren([
+                        (() => {
+                            const diff = i > 0 ? rc.driven - data.records[i - 1].driven : NaN;
+                            const flag = diff >= 0;
+                            return h('div').addChildren([
+                                (!isNaN(diff))
+                                    ? (flag ? '+' + diff : diff + '')
+                                    : '-'
+                            ]).setStyle({
+                                color: flag ? 'blue' : 'red'
+                            });
+                        })(),
+                        h('input').setValue(rc.driven).setAttributes({ type: 'number' }).on('change', ({ srcTarget, flush }) => {
+                            rc.driven = srcTarget.valueAsNumber;
+                            flush();
+                        })
+                    ]),
+                    h('td').addChildren([
+                        h('input').setValue(rc.comment).on('change', ({ srcTarget, flush }) => {
+                            rc.comment = srcTarget.value;
+                            flush();
+                        })
+                    ]),
+                    h('td').addChildren([
+                        h('button').addText('删除').on('click', ({ model }) => {
+                            if (!confirm('确实要删除本条目吗?')) {
+                                return;
+                            }
+                            model.records.splice(i, 1);
+                        }).setStyle({ color: "red" })
+                    ]),
+                ]));
+            }
+            return r;
+        })()).setAttributes({ border: 1 }).setStyle({ borderCollapse: 'collapse' });
+    }
+    function jump(data) {
+        return h('div').addChildren([
+            h('button').addText('上一页').on('click', ({ model }) => { model.page--; }),
+            h('span').addChildren([
+                h('input').setValue(data.page + 1).on('change', ({ model, srcTarget }) => {
+                    model.page = +srcTarget.value - 1;
+                }),
+                '/',
+                data.pageMax() + 1 + ''
             ]),
-            h('td').addChildren([
-                (() => {
-                    const diff = i > 0 ? timeStampDiff(rc.timeStamp, data.records[i - 1].timeStamp) : null;
-                    if (diff) {
-                        const txt = `${diff.isPositive ? '+' : '-'}${diff.days}天${diff.hours}时${diff.minutes}分${diff.seconds}秒`;
-                        return h('div').addChildren([txt]).setStyle({
-                            color: diff.isPositive ? 'blue' : 'red'
-                        });
-                    }
-                    else {
-                        return h('div').addChildren([
-                            '-'
-                        ]);
-                    }
-                })(),
-                h('input').setAttributes({ type: 'datetime-local' }).setProperties({
-                    valueAsNumber: rc.timeStamp + $8hours
-                }).on('change', ({ flush, srcTarget }) => {
-                    rc.timeStamp = srcTarget.valueAsNumber - $8hours;
-                    flush();
-                })
-            ]),
-            h('td').addChildren([
-                (() => {
-                    const diff = i > 0 ? rc.driven - data.records[i - 1].driven : NaN;
-                    const flag = diff >= 0;
-                    return h('div').addChildren([
-                        (!isNaN(diff))
-                            ? (flag ? '+' + diff : diff + '')
-                            : '-'
-                    ]).setStyle({
-                        color: flag ? 'blue' : 'red'
-                    });
-                })(),
-                h('input').setValue(rc.driven).setAttributes({ type: 'number' }).on('change', ({ srcTarget, flush }) => {
-                    rc.driven = srcTarget.valueAsNumber;
-                    flush();
-                })
-            ]),
-            h('td').addChildren([
-                h('input').setValue(rc.comment).on('change', ({ srcTarget, flush }) => {
-                    rc.comment = srcTarget.value;
-                    flush();
-                })
-            ]),
-            h('td').addChildren([
-                h('button').addText('删除').on('click', ({ model }) => {
-                    if (!confirm('确实要删除本条目吗?')) {
-                        return;
-                    }
-                    model.records.splice(i, 1);
-                }).setStyle({ color: "red" })
-            ]),
-        ]))).setAttributes({ border: 1 }).setStyle({ borderCollapse: 'collapse' });
+            h('button').addText('下一页').on('click', ({ model }) => { model.page++; }),
+        ]);
     }
     function control(data) {
         return h('div').addChildren([
+            jump(data),
             h('button').addText('添加').on('click', ({ model }) => {
                 model.records.push({
                     timeStamp: +new Date,
