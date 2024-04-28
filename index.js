@@ -846,7 +846,7 @@ function timeStampDiff(st0, st1) {
 }
 class Data {
     records = [];
-    _page = this.pageMax();
+    _page = 0;
     get page() {
         return this._page;
     }
@@ -874,6 +874,7 @@ class Data {
             return;
         }
         this.records = await this.store.getItem(slot) || [];
+        this.page = this.pageMax();
     }
 }
 const $8hours = 8 * 60 * 60 * 1000;
@@ -983,11 +984,14 @@ var ui;
         return h('div').addChildren([
             jump(data),
             h('button').addText('添加').on('click', ({ model }) => {
-                model.records.push({
-                    timeStamp: +new Date,
-                    driven: 0,
-                    comment: ''
-                });
+                const count = +(prompt('添加几条?', '1') ?? 0) || 0;
+                for (let i = 0; i < count; i++) {
+                    model.records.push({
+                        timeStamp: +new Date,
+                        driven: 0,
+                        comment: ''
+                    });
+                }
             }),
             h('button').addText('保存').on('click', async ({ model }) => {
                 alert(`保存${await model.save() ? '成功' : '失败'}`);
