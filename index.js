@@ -823,7 +823,7 @@ const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
-const PER_PAGE = 20;
+const PER_PAGE = 10;
 function timeStampDiff(st0, st1) {
     const r = {
         days: 0,
@@ -986,6 +986,19 @@ var ui;
             h('button').addText('添加').on('click', ({ model }) => {
                 const count = +(prompt('添加几条?', '1') ?? 0) || 0;
                 for (let i = 0; i < count; i++) {
+                    model.records.push({
+                        timeStamp: +new Date,
+                        driven: 0,
+                        comment: ''
+                    });
+                }
+            }),
+            h('button').addText('SPLICE').on('click', ({ model }) => {
+                const index = +(prompt('序号?', 'NaN') ?? NaN) || NaN;
+                const delCount = +(prompt('删除数?', 'NaN') ?? NaN) || NaN;
+                const addCount = +(prompt('添加数?', 'NaN') ?? NaN) || NaN;
+                model.records.splice(index, delCount);
+                for (let i = 0; i < addCount; i++) {
                     model.records.push({
                         timeStamp: +new Date,
                         driven: 0,
