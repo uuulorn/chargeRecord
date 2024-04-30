@@ -997,14 +997,15 @@ var ui;
                 const index = +(prompt('序号?', 'NaN') ?? NaN) || NaN;
                 const delCount = +(prompt('删除数?', 'NaN') ?? NaN) || NaN;
                 const addCount = +(prompt('添加数?', 'NaN') ?? NaN) || NaN;
-                model.records.splice(index, delCount);
+                const tmp = [];
                 for (let i = 0; i < addCount; i++) {
-                    model.records.push({
+                    tmp.push({
                         timeStamp: +new Date,
                         driven: 0,
                         comment: ''
                     });
                 }
+                model.records.splice(index, delCount, ...tmp);
             }),
             h('button').addText('保存').on('click', async ({ model }) => {
                 alert(`保存${await model.save() ? '成功' : '失败'}`);
