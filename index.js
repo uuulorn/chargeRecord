@@ -850,6 +850,13 @@ function timeStampDiff(st0, st1) {
     r.seconds = Math.floor(diff / SECOND);
     return r;
 }
+function isSameDate(st0, st1) {
+    const d0 = new Date(st0);
+    const d1 = new Date(st1);
+    return d0.getFullYear() === d1.getFullYear()
+        && d0.getMonth() === d1.getMonth()
+        && d0.getDate() === d1.getDate();
+}
 class Data {
     records = [];
     _page = 0;
@@ -870,6 +877,16 @@ class Data {
         const slot = prompt('输入电车名', '我的电车');
         if (!slot) {
             return false;
+        }
+        let dsi = 0;
+        for (let i = 0, m = this.records, l = m.length; i < l; i++) {
+            const rc = m[i];
+            const sd = i > 0 ? isSameDate(rc.timeStamp, m[i - 1].timeStamp) : true;
+            rc.prevDayDriven = 0;
+            if (!sd) {
+                m[i].prevDayDriven = m[i - 1].driven - m[dsi].driven;
+                dsi = i - 1;
+            }
         }
         return this.store.setItem(slot, this.records);
     }
@@ -907,9 +924,13 @@ var ui;
         ]).addChildren((() => {
             const r = [];
             const start = PER_PAGE * data.page;
-            for (let i = start, l = Math.min(start + PER_PAGE, data.records.length); i < l; i++) {
+            for (let i = start, m = data.records, l = Math.min(start + PER_PAGE, m.length); i < l; i++) {
                 const rc = data.records[i];
-                r.push(h('tr').addChildren([
+                const sd = i > 0 ? isSameDate(rc.timeStamp, m[i - 1].timeStamp) : true;
+                const df0 = i > 0 ? timeStampDiff(rc.timeStamp, data.records[i - 1].timeStamp) : null;
+                const df1 = i > 0 ? rc.driven - data.records[i - 1].driven : NaN;
+                const df2 = i > 0 ? rc.battery - data.records[i - 1].battery : NaN;
+                const row = h('tr').addChildren([
                     h('td').addChildren([
                         (() => {
                             return h('div')
@@ -918,11 +939,10 @@ var ui;
                     ]),
                     h('td').addChildren([
                         (() => {
-                            const diff = i > 0 ? timeStampDiff(rc.timeStamp, data.records[i - 1].timeStamp) : null;
-                            if (diff) {
-                                const txt = `${diff.isPositive ? '+' : '-'}${diff.days}天${diff.hours}时${diff.minutes}分${diff.seconds}秒`;
+                            if (df0) {
+                                const txt = `${df0.isPositive ? '+' : '-'}${df0.days}天${df0.hours}时${df0.minutes}分${df0.seconds}秒`;
                                 return h('div').addChildren([txt]).setStyle({
-                                    color: diff.isPositive ? 'blue' : 'red'
+                                    color: df0.isPositive ? 'blue' : 'red'
                                 });
                             }
                             else {
@@ -940,11 +960,10 @@ var ui;
                     ]),
                     h('td').addChildren([
                         (() => {
-                            const diff = i > 0 ? rc.driven - data.records[i - 1].driven : NaN;
-                            const flag = diff >= 0;
+                            const flag = df1 >= 0;
                             return h('div').addChildren([
-                                (!isNaN(diff))
-                                    ? (flag ? '+' + diff : diff + '')
+                                (!isNaN(df1))
+                                    ? (flag ? '+' + df1 : df1 + '')
                                     : '-'
                             ]).setStyle({
                                 color: flag ? 'blue' : 'red'
@@ -957,11 +976,10 @@ var ui;
                     ]),
                     h('td').addChildren([
                         (() => {
-                            const diff = i > 0 ? rc.battery - data.records[i - 1].battery : NaN;
-                            const flag = diff >= 0;
+                            const flag = df2 >= 0;
                             return h('div').addChildren([
-                                (!isNaN(diff))
-                                    ? (flag ? '+' + diff : diff + '')
+                                (!isNaN(df2))
+                                    ? (flag ? '+' + df2 : df2 + '')
                                     : '-'
                             ]).setStyle({
                                 color: flag ? 'blue' : 'red'
@@ -982,6 +1000,7 @@ var ui;
                         })()
                     ]),
                     h('td').addChildren([
+                        (df2 > 0 && df1 > 0) ? h('div').addText('或许行程与残电量有误?').setStyle({ color: 'red' }) : '',
                         h('input').setValue(rc.comment).on('change', ({ srcTarget, flush }) => {
                             rc.comment = srcTarget.value;
                             flush();
@@ -995,7 +1014,23 @@ var ui;
                             model.records.splice(i, 1);
                         }).setStyle({ color: "red" })
                     ]),
-                ]));
+                ]);
+                if (!sd) {
+                    row.setStyle({
+                        borderTop: '10px solid orange'
+                    });
+                }
+                if (rc.prevDayDriven) {
+                    r.push(h('tr').addChildren([
+                        h('td')
+                            .setAttributes({
+                            colSpan: 6
+                        })
+                            .setStyle({ color: "green" })
+                            .addText(`当日行程:${rc.prevDayDriven}km`)
+                    ]));
+                }
+                r.push(row);
             }
             return r;
         })()).setAttributes({ border: 1 }).setStyle({ borderCollapse: 'collapse' });
