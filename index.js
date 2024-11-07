@@ -37,7 +37,8 @@ class vElement {
         const m = this.$on[ev];
         if (m && m.length) {
             for (let i = 0, l = m.length; i < l; i++) {
-                m[i](info);
+                const f = m[i];
+                nextDoor(() => f(info));
             }
         }
     }
@@ -177,11 +178,12 @@ class Watcher {
             const m = this.$on[ev];
             if (m && m.length) {
                 for (let i = 0, l = m.length; i < l; i++) {
-                    m[i]({
+                    const f = m[i];
+                    nextDoor(() => f({
                         model: this.model,
                         eventName: ev,
                         watcher: this
-                    });
+                    }));
                 }
             }
         }
@@ -189,11 +191,12 @@ class Watcher {
             const m = this.$once[ev];
             if (m && m.length) {
                 for (let i = 0, l = m.length; i < l; i++) {
-                    m[i]({
+                    const f = m[i];
+                    nextDoor(() => f({
                         model: this.model,
                         eventName: ev,
                         watcher: this
-                    });
+                    }));
                 }
                 m.length = 0;
             }
@@ -202,11 +205,17 @@ class Watcher {
     emit(ev) {
         nextDoor(() => this._emit(ev));
     }
-    promisedFlush() {
+    promisedFlush = () => {
         return new Promise(resolve => {
             this.afterFlush(resolve, true);
             this.flush();
         });
+    };
+    //当vdom和dom的映射被破坏后使用
+    queryNewVdomTree(newTarget) {
+        this.target = newTarget;
+        this.vdomTree = null;
+        this.flush();
     }
     flush = throttle(this._flush.bind(this), this.flushInterval);
     _flush() {
@@ -255,7 +264,8 @@ class Watcher {
                     stop: false,
                     $ref: null,
                     data: this.data,
-                    delayPool: this.delayFnPool
+                    delayPool: this.delayFnPool,
+                    promisedFlush: this.promisedFlush
                 };
                 const h = () => {
                     if (!g.currentTarget) {
@@ -270,14 +280,14 @@ class Watcher {
                         return;
                     }
                     g.$ref = $ref;
-                    nextDoor(() => $ref.emit(type, g))
+                    nextDoor(() => $ref.emit(type, g)
                         .then(() => g.stop)
                         .then(stop => {
                         if ((!stop) && g.currentTarget) {
                             g.currentTarget = g.currentTarget.parentElement;
                             h();
                         }
-                    });
+                    }));
                 };
                 h();
                 this.flushAfterEvent && this.flush();
@@ -343,7 +353,7 @@ function rend(node, symb) {
     if (node.rootSymb && node.rootSymb !== symb) {
         //throw '异端'
         //console.log('异端!', node.$ref)
-        return node.$ref || document.createTextNode('<占位符>');
+        return node.$ref || document.createTextNode('<异端>');
     }
     let res;
     if (node instanceof vElement) {
@@ -450,7 +460,7 @@ function attrsDiff(type, ot, nt, $ref) {
                         const v0 = nt.style[key];
                         const v1 = ot.style[key];
                         if (isNul(v0)) {
-                            $ref.style.removeProperty(key);
+                            $ref.style[key] = null;
                         }
                         else if (v0 !== v1) {
                             $ref.style[key] = v0;
@@ -528,9 +538,6 @@ async function loopAwait(f, print, testor, sleepTime) {
     let count = 0;
     let warnFlag = true;
     while (true) {
-        if (print) {
-            console.log(`loopAwait第${count}次循环`);
-        }
         try {
             if (warnFlag && (count > 1000)) {
                 console.warn('该loopAwait已经循环了1000次以上,请确认代码是否有问题');
@@ -545,7 +552,6 @@ async function loopAwait(f, print, testor, sleepTime) {
             }
         }
         catch (e) {
-            print && console.log(e);
         }
     }
 }
@@ -562,7 +568,7 @@ function throttle(fn, delay) {
     };
 }
 async function nextDoor(f) {
-    return new Promise(res => res(void 0)).then(f);
+    return new Promise(resolve => resolve(void 0)).then(f);
 }
 class DelayFnManager {
     map = new Map();
@@ -894,6 +900,7 @@ var ui;
                 h('th').addText('序号'),
                 h('th').addText('时间'),
                 h('th').addText('总行程(KM)'),
+                h('th').addText('残电量(%)'),
                 h('th').addText('备注'),
                 h('th').addText('操作'),
             ])
@@ -949,6 +956,19 @@ var ui;
                         })
                     ]),
                     h('td').addChildren([
+                        (() => {
+                            const s = h('select');
+                            for (let i = 0; i <= 100; i++) {
+                                s.addChild(h('option').addText(i + '').setValue(i + ''));
+                            }
+                            s.setValue(rc.battery).on('change', ({ flush, srcTarget }) => {
+                                rc.battery = +srcTarget.value;
+                                flush();
+                            });
+                            return s;
+                        })()
+                    ]),
+                    h('td').addChildren([
                         h('input').setValue(rc.comment).on('change', ({ srcTarget, flush }) => {
                             rc.comment = srcTarget.value;
                             flush();
@@ -988,6 +1008,7 @@ var ui;
                 for (let i = 0; i < count; i++) {
                     model.records.push({
                         timeStamp: +new Date,
+                        battery: 90,
                         driven: 0,
                         comment: ''
                     });
@@ -1001,6 +1022,7 @@ var ui;
                 for (let i = 0; i < addCount; i++) {
                     tmp.push({
                         timeStamp: +new Date,
+                        battery: 90,
                         driven: 0,
                         comment: ''
                     });
