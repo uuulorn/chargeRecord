@@ -1055,30 +1055,13 @@ var ui;
         return h('div').addChildren([
             jump(data),
             h('button').addText('添加').on('click', ({ model }) => {
-                const count = +(prompt('添加几条?', '1') ?? 0) || 0;
-                for (let i = 0; i < count; i++) {
-                    model.records.push({
-                        timeStamp: +new Date,
-                        battery: 90,
-                        driven: 0,
-                        comment: ''
-                    });
-                }
-            }),
-            h('button').addText('SPLICE').on('click', ({ model }) => {
-                const index = +(prompt('序号?', 'NaN') ?? NaN) || NaN;
-                const delCount = +(prompt('删除数?', 'NaN') ?? NaN) || NaN;
-                const addCount = +(prompt('添加数?', 'NaN') ?? NaN) || NaN;
-                const tmp = [];
-                for (let i = 0; i < addCount; i++) {
-                    tmp.push({
-                        timeStamp: +new Date,
-                        battery: 90,
-                        driven: 0,
-                        comment: ''
-                    });
-                }
-                model.records.splice(index, delCount, ...tmp);
+                model.records.push({
+                    timeStamp: +new Date,
+                    battery: 90,
+                    driven: 0,
+                    comment: ''
+                });
+                model.page = model.pageMax();
             }),
             h('button').addText('保存').on('click', async ({ model }) => {
                 alert(`保存${await model.save() ? '成功' : '失败'}`);
