@@ -957,10 +957,23 @@ var ui;
                     ]),
                     h('td').addChildren([
                         (() => {
-                            const s = h('select');
-                            for (let i = 0; i <= 100; i++) {
-                                s.addChild(h('option').addText(i + '').setValue(i + ''));
-                            }
+                            const diff = i > 0 ? rc.battery - data.records[i - 1].battery : NaN;
+                            const flag = diff >= 0;
+                            return h('div').addChildren([
+                                (!isNaN(diff))
+                                    ? (flag ? '+' + diff : diff + '')
+                                    : '-'
+                            ]).setStyle({
+                                color: flag ? 'blue' : 'red'
+                            });
+                        })(),
+                        (() => {
+                            const s = h('input').setAttributes({
+                                type: 'number',
+                                step: '1',
+                                min: 0,
+                                max: 100,
+                            });
                             s.setValue(rc.battery).on('change', ({ flush, srcTarget }) => {
                                 rc.battery = +srcTarget.value;
                                 flush();
