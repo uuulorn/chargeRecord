@@ -951,8 +951,11 @@ var ui;
                                 ]);
                             }
                         })(),
-                        h('input').setAttributes({ type: 'datetime-local' }).setProperties({
-                            valueAsNumber: rc.timeStamp + $8hours
+                        h('input').setAttributes({
+                            type: 'datetime-local',
+                            readOnly: 'readonly'
+                        }).setProperties({
+                            valueAsNumber: Math.floor((rc.timeStamp + $8hours) / 1000) * 1000,
                         }).on('change', ({ flush, srcTarget }) => {
                             rc.timeStamp = srcTarget.valueAsNumber - $8hours;
                             flush();
