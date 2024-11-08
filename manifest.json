@@ -1,0 +1,13 @@
+{
+    "name": "充电记录",
+    "icons": [
+        {
+            "src": "./512.png",
+            "type": "image/png",
+            "sizes": "512x512"
+        }
+    ],
+    "start_url": "./index.html",
+    "display": "standalone",
+    "id": "/dists/%E5%85%85%E7%94%B5%E8%AE%B0%E5%BD%95/index.html"
+}

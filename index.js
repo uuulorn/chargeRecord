@@ -1109,4 +1109,11 @@ async function main() {
     });
     wt.model.load();
 }
+(async () => {
+    for (const old of await navigator.serviceWorker.getRegistrations()) {
+        await old.unregister();
+    }
+    await navigator.serviceWorker.register('./sw.js', { scope: './' });
+})();
+document.head.insertAdjacentHTML('beforeend', `<link rel="manifest" href="./manifest.json" crossorigin="use-credentials" />`);
 main();
