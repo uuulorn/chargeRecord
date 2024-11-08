@@ -1003,7 +1003,6 @@ var ui;
                         })()
                     ]),
                     h('td').addChildren([
-                        (df2 > 0 && df1 > 0) ? h('div').addText('或许行程与残电量有误?').setStyle({ color: 'red' }) : '',
                         h('input').setValue(rc.comment).on('change', ({ srcTarget, flush }) => {
                             rc.comment = srcTarget.value;
                             flush();
@@ -1110,9 +1109,6 @@ async function main() {
     wt.model.load();
 }
 (async () => {
-    for (const old of await navigator.serviceWorker.getRegistrations()) {
-        await old.unregister();
-    }
     await navigator.serviceWorker.register('./sw.js', { scope: './' });
 })();
 document.head.insertAdjacentHTML('beforeend', `<link rel="manifest" href="./manifest.json" crossorigin="use-credentials" />`);
